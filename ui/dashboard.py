@@ -345,13 +345,14 @@ for col, num, label, color in stats_data:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Tabs ─────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🎙️  LIVE CALL MONITOR",
     "📄  DOCUMENT FORENSICS",
     "⚡  AMD NPU PERFORMANCE",
     "📊  ALERT DASHBOARD",
     "🇮🇳  INDIA THREAT INTEL",
-    "🎤  LIVE MIC DEMO"
+    "🎤  LIVE MIC DEMO",
+    "📞  CALLER ID ANALYZER"
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -1068,3 +1069,189 @@ with tab6:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# TAB 7 — CALLER ID ANALYZER
+# ════════════════════════════════════════════════════════════
+with tab7:
+    st.markdown("### 📞 Caller ID Spoof Analyzer")
+    st.caption("Expose fake government callers instantly. Enter the number that called you and what they claimed to be.")
+
+    if "caller_analyzer" not in st.session_state:
+        from core.network.caller_analyzer import CallerAnalyzer
+        st.session_state.caller_analyzer = CallerAnalyzer()
+
+    # Info banner
+    st.markdown("""
+    <div style='background:#0d1b2a; border:1px solid #1e3a5f;
+                border-radius:10px; padding:20px; margin-bottom:20px;'>
+        <div style='color:#60a5fa; font-weight:700; margin-bottom:10px;'>
+            💡 Key Insight
+        </div>
+        <div style='color:#94a3b8; font-size:0.9rem; line-height:1.8;'>
+            Indian government agencies <strong style='color:#ef4444;'>NEVER</strong>
+            call from mobile numbers, WhatsApp, or international numbers.<br>
+            CBI calls from <code>011-XXXXXXXX</code> •
+            RBI calls from <code>022-XXXXXXXX</code> •
+            ED calls from <code>011/022-XXXXXXXX</code>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    ca_col1, ca_col2 = st.columns([1, 1])
+
+    with ca_col1:
+        st.markdown("#### 📱 Enter Caller Details")
+
+        caller_number = st.text_input(
+            "Phone number that called you",
+            placeholder="e.g. +91 9876543210 or 011-23384666",
+        )
+
+        claimed_agency = st.selectbox(
+            "What did they claim to be?",
+            ["", "CBI", "ED", "RBI", "TRAI", "Income Tax",
+             "Cyber Police", "Supreme Court", "Customs", "Other"],
+        )
+
+        custom_agency = ""
+        if claimed_agency == "Other":
+            custom_agency = st.text_input("Specify agency name")
+
+        agency = custom_agency if claimed_agency == "Other" else claimed_agency
+
+        # Quick test buttons
+        st.markdown("#### 🎯 Quick Demo Tests")
+        st.caption("Click to auto-fill and analyze")
+
+        demo_cases = [
+            ("📱 Scam: Mobile CBI",    "+91 9958123456", "CBI"),
+            ("🌍 Scam: US RBI",        "+1 4155552671",  "RBI"),
+            ("✅ Legit: Delhi CBI",    "011-23384666",   "CBI"),
+            ("🇵🇰 Scam: Pak Income Tax","+92 3001234567","Income Tax"),
+            ("✅ Legit: Helpline",     "1930",           "Cyber Police"),
+        ]
+
+        for label, num, ag in demo_cases:
+            if st.button(label, use_container_width=True):
+                st.session_state["demo_number"] = num
+                st.session_state["demo_agency"]  = ag
+                st.rerun()
+
+        # Load demo values if set
+        if "demo_number" in st.session_state:
+            caller_number  = st.session_state.pop("demo_number")
+            claimed_agency = st.session_state.pop("demo_agency")
+            agency         = claimed_agency
+
+        analyze_caller_btn = st.button(
+            "🔍 ANALYZE CALLER",
+            use_container_width=True,
+            type="primary",
+            disabled=not caller_number
+        )
+
+    with ca_col2:
+        st.markdown("#### 📋 Analysis Result")
+
+        if analyze_caller_btn and caller_number:
+            result  = st.session_state.caller_analyzer.analyze_caller(
+                caller_number, agency or None
+            )
+            verdict = result["verdict"]
+            risk    = result["risk_score"]
+            ntype   = result["number_type"]
+
+            color = ("#ef4444" if "SCAM" in verdict
+                     else "#f59e0b" if "SUSPICIOUS" in verdict
+                     else "#22c55e")
+            icon  = ("🚨" if "SCAM" in verdict
+                     else "⚠️" if "SUSPICIOUS" in verdict
+                     else "✅")
+
+            # Verdict box
+            st.markdown(f"""
+            <div style='background:#0d1b2a; border:2px solid {color};
+                        border-radius:12px; padding:24px; text-align:center;'>
+                <div style='font-size:0.75rem; color:#64748b; letter-spacing:3px;'>
+                    VERDICT</div>
+                <div style='font-size:2rem; font-weight:700;
+                            color:{color}; margin:8px 0;'>{icon} {verdict}</div>
+                <div style='font-size:1.2rem; color:#94a3b8;
+                            font-family:monospace;'>Risk Score: {risk}/100</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Number details
+            m1, m2 = st.columns(2)
+            m1.metric("Number Type", ntype["type"].upper())
+            m2.metric("Country",     ntype.get("country", "Unknown"))
+
+            if ntype.get("location"):
+                st.info(f"📍 Location: {ntype['location']}")
+            if ntype.get("carrier"):
+                st.info(f"📡 Carrier: {ntype['carrier']}")
+            if ntype.get("circle"):
+                st.info(f"🗺️ Circle: {ntype['circle']}")
+
+            # Red flags
+            if result["red_flags"]:
+                st.markdown("**🚩 Red Flags:**")
+                for flag in result["red_flags"]:
+                    st.markdown(f"""
+                    <div style='background:#1a0505; border-left:3px solid #ef4444;
+                                padding:10px 14px; margin:4px 0;
+                                border-radius:0 6px 6px 0; color:#fca5a5;
+                                font-size:0.85rem;'>⚠ {flag}</div>
+                    """, unsafe_allow_html=True)
+
+            # Fact check
+            if result.get("agency_fact"):
+                st.markdown(f"""
+                <div style='background:#051a0a; border:1px solid #22c55e;
+                            border-radius:8px; padding:14px; margin-top:12px;'>
+                    <div style='color:#22c55e; font-weight:700;
+                                font-size:0.8rem; margin-bottom:4px;'>
+                        ℹ️ FACT CHECK</div>
+                    <div style='color:#94a3b8; font-size:0.85rem;'>
+                        {result['agency_fact']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            if result["alert"]:
+                st.session_state.total_alerts += 1
+
+        else:
+            st.markdown("""
+            <div style='text-align:center; padding:60px; color:#475569;'>
+                <div style='font-size:3rem;'>📞</div>
+                <div style='margin-top:12px;'>
+                    Enter a number and click Analyze<br>
+                    or use the Quick Demo buttons
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Reference card
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### 📖 Official Number Reference")
+        ref_data = [
+            ("CBI",          "011-XXXXXXXX", "New Delhi"),
+            ("ED",           "011/022-XXXX", "Delhi/Mumbai"),
+            ("RBI",          "022-XXXXXXXX", "Mumbai"),
+            ("Income Tax",   "011/022/080",  "Major cities"),
+            ("Cyber Crime",  "1930",         "National helpline"),
+        ]
+        for agency_name, number_format, location in ref_data:
+            st.markdown(f"""
+            <div style='background:#0a0f1e; border:1px solid #1e3a5f;
+                        border-radius:6px; padding:8px 14px; margin:4px 0;
+                        display:flex; justify-content:space-between;
+                        font-size:0.82rem;'>
+                <span style='color:#60a5fa; font-weight:600;'>{agency_name}</span>
+                <span style='color:#94a3b8; font-family:monospace;'>{number_format}</span>
+                <span style='color:#475569;'>{location}</span>
+            </div>
+            """, unsafe_allow_html=True)
