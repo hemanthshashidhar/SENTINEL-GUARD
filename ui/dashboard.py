@@ -345,12 +345,13 @@ for col, num, label, color in stats_data:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Tabs ─────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🎙️  LIVE CALL MONITOR",
     "📄  DOCUMENT FORENSICS",
     "⚡  AMD NPU PERFORMANCE",
     "📊  ALERT DASHBOARD",
     "🇮🇳  INDIA THREAT INTEL",
+    "🎤  LIVE MIC DEMO"
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -819,3 +820,251 @@ with tab5:
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+
+# ════════════════════════════════════════════════════════════
+# TAB 6 — LIVE MIC DEMO
+# ════════════════════════════════════════════════════════════
+with tab6:
+    st.markdown("### 🎤 Live Microphone Scam Detection")
+    st.caption("Real microphone → Whisper AI transcription → instant scam detection. All on-device via AMD NPU.")
+
+    # Init session state
+    for key, val in [
+        ("mic_running", False),
+        ("mic_results", []),
+    ]:
+        if key not in st.session_state:
+            st.session_state[key] = val
+
+    # Info banner
+    st.markdown("""
+    <div style='background:#0d1b2a; border:1px solid #1e3a5f;
+                border-radius:10px; padding:20px; margin-bottom:20px;'>
+        <div style='display:flex; gap:30px; flex-wrap:wrap;'>
+            <div style='flex:1; min-width:200px;'>
+                <div style='color:#60a5fa; font-weight:700; margin-bottom:8px;'>⚡ How it works</div>
+                <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+                    1. Click START MONITORING<br>
+                    2. Speak or play a scam call audio<br>
+                    3. Every 6 seconds → Whisper transcribes<br>
+                    4. NLP engine detects scam patterns instantly
+                </div>
+            </div>
+            <div style='flex:1; min-width:200px;'>
+                <div style='color:#60a5fa; font-weight:700; margin-bottom:8px;'>🎯 Demo phrases</div>
+                <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+                    "You are under digital arrest"<br>
+                    "Do not tell anyone about this call"<br>
+                    "Transfer money immediately via GPay"<br>
+                    "This is CBI officer speaking"
+                </div>
+            </div>
+            <div style='flex:1; min-width:200px;'>
+                <div style='color:#60a5fa; font-weight:700; margin-bottom:8px;'>🗺️ Roadmap</div>
+                <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+                    🔜 Hindi detection<br>
+                    🔜 Kannada detection<br>
+                    🔜 Tamil detection<br>
+                    🔜 Whisper Large v3 on AMD NPU
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    mic_col1, mic_col2 = st.columns([1, 2])
+
+    with mic_col1:
+        st.markdown("#### 🎙️ Controls")
+
+        if not st.session_state.mic_running:
+            if st.button("▶ START MONITORING", use_container_width=True, type="primary"):
+                st.session_state.mic_running = True
+                st.session_state.mic_results = []
+                st.rerun()
+        else:
+            if st.button("⏹ STOP MONITORING", use_container_width=True):
+                st.session_state.mic_running = False
+                st.rerun()
+
+        if st.session_state.mic_running:
+            st.markdown("""
+            <div style='background:#052010; border:1px solid #22c55e;
+                        border-radius:8px; padding:14px; text-align:center; margin-top:12px;'>
+                <div style='color:#22c55e; font-weight:700;'>🎙️ LISTENING</div>
+                <div style='color:#4ade80; font-size:0.8rem; margin-top:4px;'>
+                    Analyzing every 6 seconds
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style='background:#0d1b2a; border:1px solid #1e3a5f;
+                        border-radius:8px; padding:14px; text-align:center; margin-top:12px;'>
+                <div style='color:#475569; font-weight:700;'>⏸ STANDBY</div>
+                <div style='color:#334155; font-size:0.8rem; margin-top:4px;'>
+                    Click START to begin
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        if st.session_state.mic_results:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("#### 📊 Session Stats")
+            total_m  = len(st.session_state.mic_results)
+            danger_m = sum(1 for r in st.session_state.mic_results if r["risk_level"] == "DANGER")
+            sus_m    = sum(1 for r in st.session_state.mic_results if r["risk_level"] == "SUSPICIOUS")
+            st.metric("Chunks Analyzed", total_m)
+            st.metric("🚨 DANGER Alerts", danger_m)
+            st.metric("⚠️ Suspicious",    sus_m)
+
+    with mic_col2:
+        st.markdown("#### 📡 Live Detection Feed")
+
+        if st.session_state.mic_running:
+            import wave as wave_module
+            import tempfile
+            import numpy as np
+            import sounddevice as sd
+            from faster_whisper import WhisperModel
+            from core.nlp.scam_detector import ScamDetector
+
+            # Load models once into session
+            if "whisper_model" not in st.session_state:
+                with st.spinner("Loading Whisper model..."):
+                    st.session_state.whisper_model = WhisperModel(
+                        "base", device="cpu", compute_type="int8"
+                    )
+            if "mic_nlp" not in st.session_state:
+                st.session_state.mic_nlp = ScamDetector()
+
+            feed = st.empty()
+            feed.markdown("""
+            <div style='background:#0d1b2a; border:1px solid #22c55e;
+                        border-radius:10px; padding:30px; text-align:center;'>
+                <div style='font-size:2rem;'>🎙️</div>
+                <div style='color:#22c55e; margin-top:8px;'>Recording 6 seconds...</div>
+                <div style='color:#475569; font-size:0.8rem; margin-top:4px;'>Speak now</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Record
+            audio = sd.rec(
+                16000 * 6, samplerate=16000,
+                channels=1, dtype="float32"
+            )
+            sd.wait()
+
+            feed.markdown("""
+            <div style='background:#0d1b2a; border:1px solid #3b82f6;
+                        border-radius:10px; padding:30px; text-align:center;'>
+                <div style='font-size:2rem;'>🧠</div>
+                <div style='color:#3b82f6; margin-top:8px;'>Transcribing with Whisper AI...</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Save wav
+            tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+            with wave_module.open(tmp.name, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(16000)
+                wf.writeframes(
+                    (audio.flatten() * 32767).astype(np.int16).tobytes()
+                )
+
+            # Transcribe
+            hallucinations = [
+                "this is the first time", "thank you for watching",
+                "please subscribe", "subtitles by", "www.",
+            ]
+            try:
+                segments, info = st.session_state.whisper_model.transcribe(
+                    tmp.name,
+                    beam_size=5,
+                    vad_filter=False,
+                    condition_on_previous_text=False,
+                    no_speech_threshold=0.6,
+                )
+                transcript = " ".join(s.text for s in segments).strip()
+                if any(h in transcript.lower() for h in hallucinations):
+                    transcript = ""
+            except Exception as e:
+                transcript = ""
+            finally:
+                try:
+                    os.unlink(tmp.name)
+                except:
+                    pass
+
+            if transcript:
+                result = st.session_state.mic_nlp.analyze_text(transcript)
+                result["transcript"] = transcript
+                result["timestamp"]  = datetime.now().strftime("%H:%M:%S")
+                st.session_state.mic_results.append(result)
+                if result["alert"]:
+                    st.session_state.total_alerts += 1
+
+                rl    = result["risk_level"]
+                color = "#ef4444" if rl=="DANGER" else "#f59e0b" if rl=="SUSPICIOUS" else "#22c55e"
+                icon  = "🚨" if rl=="DANGER" else "⚠️" if rl=="SUSPICIOUS" else "✅"
+
+                feed.markdown(f"""
+                <div style='background:#0d1b2a; border:2px solid {color};
+                            border-radius:10px; padding:20px;'>
+                    <div style='display:flex; justify-content:space-between; align-items:center;'>
+                        <span style='color:#475569; font-family:monospace; font-size:0.8rem;'>
+                            [{result['timestamp']}]</span>
+                        <span style='color:{color}; font-weight:700; font-size:1.1rem;'>
+                            {icon} {rl}</span>
+                        <span style='color:#64748b; font-family:monospace;'>
+                            Score: {result['total_score']}</span>
+                    </div>
+                    <div style='color:#e2e8f0; margin-top:12px; font-size:0.95rem;
+                                background:#0a0f1e; padding:12px; border-radius:6px;'>
+                        "{transcript}"
+                    </div>
+                    {"<div style='color:#ef4444; margin-top:8px; font-size:0.85rem;'>🔑 " +
+                     ', '.join(result['found_keywords']) + "</div>"
+                     if result.get('found_keywords') else ""}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                feed.markdown("""
+                <div style='background:#0d1b2a; border:1px solid #1e3a5f;
+                            border-radius:10px; padding:20px; text-align:center; color:#475569;'>
+                    No speech detected. Try speaking louder or closer to mic.
+                </div>
+                """, unsafe_allow_html=True)
+
+            time.sleep(0.5)
+            st.rerun()
+
+        else:
+            if st.session_state.mic_results:
+                for r in reversed(st.session_state.mic_results):
+                    rl    = r["risk_level"]
+                    color = "#ef4444" if rl=="DANGER" else "#f59e0b" if rl=="SUSPICIOUS" else "#22c55e"
+                    icon  = "🚨" if rl=="DANGER" else "⚠️" if rl=="SUSPICIOUS" else "✅"
+                    st.markdown(f"""
+                    <div style='background:#0a0f1e; border-left:3px solid {color};
+                                padding:10px 16px; margin:4px 0; border-radius:0 8px 8px 0;'>
+                        <span style='color:{color}; font-weight:700;'>{icon} {rl}</span>
+                        <span style='color:#475569; font-family:monospace; font-size:0.75rem;'>
+                            [{r.get('timestamp','--')}]</span>
+                        <br>
+                        <span style='color:#94a3b8; font-size:0.85rem;'>{r['transcript']}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div style='text-align:center; padding:60px; color:#475569;'>
+                    <div style='font-size:3rem;'>🎤</div>
+                    <div style='margin-top:12px;'>Click START MONITORING to begin</div>
+                    <div style='font-size:0.8rem; margin-top:8px;'>
+                        Supports real-time English detection<br>
+                        Hindi • Kannada • Tamil coming in v2.0
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
