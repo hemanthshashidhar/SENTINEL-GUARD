@@ -345,14 +345,15 @@ for col, num, label, color in stats_data:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Tabs ─────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7,tab8 = st.tabs([
     "🎙️  LIVE CALL MONITOR",
     "📄  DOCUMENT FORENSICS",
     "⚡  AMD NPU PERFORMANCE",
     "📊  ALERT DASHBOARD",
     "🇮🇳  INDIA THREAT INTEL",
     "🎤  LIVE MIC DEMO",
-    "📞  CALLER ID ANALYZER"
+    "📞  CALLER ID ANALYZER",
+    "📹  DEEPFAKE DETECTOR"
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -1255,3 +1256,138 @@ with tab7:
                 <span style='color:#475569;'>{location}</span>
             </div>
             """, unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# TAB 5 — DEEPFAKE DETECTOR
+# ════════════════════════════════════════════════════════════
+with tab8:
+    st.markdown("### 📹 Live Deepfake Detector")
+    st.caption("Real-time webcam analysis detecting AI-generated faces using blink rate, texture, lighting and movement signals.")
+
+    st.markdown("""
+    <div style='background:#0d1b2a; border:1px solid #1e3a5f;
+                border-radius:10px; padding:20px; margin-bottom:20px;'>
+        <div style='display:flex; gap:30px; flex-wrap:wrap;'>
+            <div style='flex:1; min-width:180px;'>
+                <div style='color:#60a5fa; font-weight:700; margin-bottom:8px;'>
+                    🔍 What we detect</div>
+                <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+                    • Abnormal blink rate<br>
+                    • Face texture smoothing<br>
+                    • Lighting asymmetry<br>
+                    • Unnatural stillness<br>
+                    • Face symmetry anomalies
+                </div>
+            </div>
+            <div style='flex:1; min-width:180px;'>
+                <div style='color:#60a5fa; font-weight:700; margin-bottom:8px;'>
+                    ⚡ How to use</div>
+                <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+                    1. Click Launch Detector<br>
+                    2. A new window opens<br>
+                    3. Keep face in frame<br>
+                    4. Wait 15s to calibrate<br>
+                    5. Press Q to quit
+                </div>
+            </div>
+            <div style='flex:1; min-width:180px;'>
+                <div style='color:#60a5fa; font-weight:700; margin-bottom:8px;'>
+                    🎯 Demo tip</div>
+                <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+                    • Hold very still → triggers stillness flag<br>
+                    • Cover one eye → triggers blink anomaly<br>
+                    • Shine light from one side → lighting flag<br>
+                    • Normal behavior → shows REAL
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    df_col1, df_col2 = st.columns([1, 2])
+
+    with df_col1:
+        st.markdown("#### 🎛️ Controls")
+
+        if st.button("▶ LAUNCH DETECTOR", use_container_width=True, type="primary"):
+            import subprocess
+            import sys
+            subprocess.Popen([sys.executable, "-m", "core.video.deepfake"])
+            st.success("✅ Deepfake Detector launched in new window!")
+            st.info("📌 Press Q in the detector window to close it.")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### 📊 Detection Signals")
+
+        signals = [
+            ("Blink Rate",         "Normal: 12-20/min",  "#3b82f6"),
+            ("Texture Score",      "Lower = smoother",   "#8b5cf6"),
+            ("Lighting Asymmetry", "Higher = suspicious","#f59e0b"),
+            ("Face Symmetry",      "Higher = anomaly",   "#ef4444"),
+            ("Movement Score",     "Lower = too still",  "#22c55e"),
+        ]
+        for signal, note, color in signals:
+            st.markdown(f"""
+            <div style='background:#0a0f1e; border-left:3px solid {color};
+                        padding:8px 12px; margin:4px 0; border-radius:0 6px 6px 0;'>
+                <div style='color:{color}; font-weight:600;
+                            font-size:0.85rem;'>{signal}</div>
+                <div style='color:#475569; font-size:0.75rem;'>{note}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with df_col2:
+        st.markdown("#### 🧠 How It Works")
+        st.markdown("""
+        <div style='background:#0d1b2a; border:1px solid #1e3a5f;
+                    border-radius:10px; padding:20px;'>
+            <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+
+            <span style='color:#60a5fa; font-weight:700;'>Real faces</span>
+            have natural variance across all 5 signals simultaneously.
+            Deepfakes fail on at least 2-3 signals because:<br><br>
+
+            <span style='color:#ef4444;'>🚩 Blink Rate</span> —
+            Deepfakes blink unnaturally (too little or too much).
+            Normal humans blink 12-20 times per minute.<br><br>
+
+            <span style='color:#ef4444;'>🚩 Texture</span> —
+            AI face generators over-smooth skin.
+            We measure Laplacian variance — low variance = fake.<br><br>
+
+            <span style='color:#ef4444;'>🚩 Lighting</span> —
+            Scammers composite fake backgrounds with different
+            lighting than their face. We measure left-right asymmetry.<br><br>
+
+            <span style='color:#ef4444;'>🚩 Stillness</span> —
+            Deepfake video loops have unnatural stillness.
+            Real faces have constant micro-movements.<br><br>
+
+            <span style='color:#ef4444;'>🚩 Symmetry</span> —
+            AI blending around jaw/hairline breaks natural
+            face symmetry. We detect this via pixel comparison.<br><br>
+
+            <span style='color:#22c55e; font-weight:700;'>
+            Risk threshold: 55+ = DEEPFAKE DETECTED</span>
+
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("#### 🗺️ Roadmap")
+        st.markdown("""
+        <div style='background:#0d1b2a; border:1px solid #1e3a5f;
+                    border-radius:8px; padding:16px;'>
+            <div style='color:#94a3b8; font-size:0.85rem; line-height:2;'>
+                🔜 <span style='color:#60a5fa;'>v2.0:</span>
+                FaceForensics++ pretrained model (95%+ accuracy)<br>
+                🔜 <span style='color:#60a5fa;'>v2.0:</span>
+                WhatsApp screen share integration<br>
+                🔜 <span style='color:#60a5fa;'>v3.0:</span>
+                AMD NPU optimized ONNX deepfake model<br>
+                🔜 <span style='color:#60a5fa;'>v3.0:</span>
+                Real-time video call interception API
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
