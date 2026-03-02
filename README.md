@@ -108,8 +108,8 @@ No existing tool detects all these attack vectors simultaneously. Until now.
 ### Setup
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/sentinel-guard.git
-cd sentinel-guard
+git clone https://github.com/hemanthshashidhar/SENTINEL-GUARD.git
+cd SENTINEL-GUARD
 
 # Create virtual environment
 python3 -m venv venv
